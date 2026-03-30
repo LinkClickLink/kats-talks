@@ -8,13 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+
 import {
   getCatCharacters,
   getCatBreeds,
@@ -139,7 +133,8 @@ export default function CatsPage() {
       await load()
       setDialogOpen(false)
     } catch (err) {
-      toast.error(String(err))
+      const msg = err instanceof Error ? err.message : (err as Record<string, string>)?.message ?? JSON.stringify(err)
+      toast.error(msg)
     } finally {
       setSaving(false)
     }
@@ -262,16 +257,16 @@ export default function CatsPage() {
               </div>
               <div className="space-y-1.5">
                 <Label>Raza</Label>
-                <Select value={form.breed_id} onValueChange={(v) => { if (v) set('breed_id', v) }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleccionar raza" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {breeds.map((b) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <select
+                  value={form.breed_id}
+                  onChange={(e) => set('breed_id', e.target.value)}
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                >
+                  <option value="">Sin raza</option>
+                  {breeds.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
