@@ -1,19 +1,6 @@
 import type { Metadata } from 'next'
-import { Nunito, Montserrat } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
-
-const nunito = Nunito({
-  variable: '--font-nunito',
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-})
-
-const montserrat = Montserrat({
-  variable: '--font-montserrat',
-  subsets: ['latin'],
-  weight: ['500', '600', '700', '800'],
-})
 
 export const metadata: Metadata = {
   title: 'Kats Talks Manager',
@@ -23,7 +10,15 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={`${nunito.variable} ${montserrat.variable} antialiased`}>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700;800&family=Nunito:wght@400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="antialiased">
         {children}
         <Toaster richColors position="top-right" />
       </body>
