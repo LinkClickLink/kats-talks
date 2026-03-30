@@ -16,23 +16,34 @@ export async function POST(req: NextRequest) {
 
     const webhookUrl = `${config.instance_url.replace(/\/$/, '')}/webhook/kats-talks-veo3`
 
-    const res = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
+    let res: Response
+    try {
+      res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(30_000),
+      })
+    } catch (fetchErr) {
+      const cause = fetchErr instanceof Error ? fetchErr.message : String(fetchErr)
+      return NextResponse.json(
+        { error: `No se pudo conectar con n8n (${webhookUrl}): ${cause}` },
+        { status: 502 }
+      )
+    }
 
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: data.message ?? 'Workflow execution failed' },
+        { error: data.message ?? `n8n respondió ${res.status}` },
         { status: res.status }
       )
     }
 
     return NextResponse.json(data)
   } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
