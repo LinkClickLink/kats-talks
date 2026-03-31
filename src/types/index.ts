@@ -81,6 +81,15 @@ export const CAMERA_MOVEMENTS = [
 export type AnimationEffectId = typeof ANIMATION_EFFECTS[number]['id']
 export type CameraMovementId = typeof CAMERA_MOVEMENTS[number]['id']
 
+// ── Video versions ─────────────────────────────────────────
+
+export interface VideoVersion {
+  id: string
+  video_id: string
+  video_url: string
+  created_at: string
+}
+
 // ── Database entities ──────────────────────────────────────
 
 export interface CatBreed {
@@ -144,6 +153,7 @@ export interface Video {
   created_at: string
   character?: CatCharacter
   scenario?: Scenario
+  versions?: VideoVersion[]
 }
 
 export interface N8nConfig {

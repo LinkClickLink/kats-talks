@@ -90,13 +90,16 @@ export function buildPrompts(
   const frame2 = [
     `Pixar Disney 3D animation style, EXACT SAME CHARACTER as previous image,`,
     `${character.prompt_description},`,
-    accessories ? `${accessories},` : '',
-    `in ${scenario.visual_prompt},`,
-    `mouth slightly open as if speaking, animated ${toneLabel} facial expression,`,
-    `${toneActing},`,
+    accessories
+      ? `MUST wear ${accessories} — do NOT remove or change any clothing or accessories,`
+      : `KEEP all clothing and accessories identical to the reference image,`,
+    `SAME background and setting: ${scenario.visual_prompt}, SAME ${scenario.lighting},`,
+    `CHANGE ONLY the expression and body language:`,
+    `mouth WIDE OPEN speaking expressively, body leaning forward with energy,`,
+    `one paw raised mid-gesture, eyebrows animated, intense ${toneLabel} expression,`,
     `ready to say: "${firstLine}",`,
-    `ultra-detailed fur, big expressive eyes, same lighting and setting,`,
-    `full body visible, 9:16 vertical format, no text on screen`,
+    `ultra-detailed fur, big expressive eyes, full body visible,`,
+    `9:16 vertical format, no text on screen`,
   ]
     .filter(Boolean)
     .join(' ')

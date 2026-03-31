@@ -4,6 +4,7 @@ import type {
   CatCharacter,
   Scenario,
   Video,
+  VideoVersion,
   N8nConfig,
   DashboardStats,
   StudioFormState,
@@ -102,22 +103,32 @@ export async function getVideos(limit = 50): Promise<Video[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('videos')
-    .select('*, character:cat_characters(*, breed:cat_breeds(*)), scenario:scenarios(*)')
+    .select('*, character:cat_characters(*, breed:cat_breeds(*)), scenario:scenarios(*), versions:video_versions(id, video_url, created_at)')
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map((v) => ({
+    ...v,
+    versions: ((v.versions ?? []) as VideoVersion[]).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ),
+  }))
 }
 
 export async function getVideo(id: string): Promise<Video | null> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('videos')
-    .select('*, character:cat_characters(*, breed:cat_breeds(*)), scenario:scenarios(*)')
+    .select('*, character:cat_characters(*, breed:cat_breeds(*)), scenario:scenarios(*), versions:video_versions(id, video_url, created_at)')
     .eq('id', id)
     .single()
   if (error) return null
-  return data
+  return {
+    ...data,
+    versions: ((data.versions ?? []) as VideoVersion[]).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ),
+  }
 }
 
 export async function createVideo(

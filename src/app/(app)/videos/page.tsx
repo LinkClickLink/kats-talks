@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { getVideos, deleteVideo, updateVideoStatus, getN8nConfig } from '@/lib/supabase/queries'
 import type { Video, VideoStatus } from '@/types'
 import { TOPIC_CATEGORY_LABELS, SCRIPT_TONE_LABELS } from '@/types'
-import { Loader2, Trash2, Eye, Film, ExternalLink, RotateCcw, PenLine } from 'lucide-react'
+import { Loader2, Trash2, Eye, Film, ExternalLink, RotateCcw, PenLine, Download } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -317,6 +317,32 @@ export default function VideosPage() {
                   >
                     {selected.video_url}
                   </a>
+                </div>
+              )}
+
+              {selected.versions && selected.versions.length > 0 && (
+                <div>
+                  <p className="font-medium text-muted-foreground mb-1">
+                    Versiones generadas ({selected.versions.length})
+                  </p>
+                  <div className="space-y-1.5">
+                    {selected.versions.map((v, i) => (
+                      <div key={v.id} className="flex items-center justify-between bg-muted rounded px-2.5 py-1.5 text-xs">
+                        <span className="text-muted-foreground">
+                          #{selected.versions!.length - i} · {new Date(v.created_at).toLocaleString('es', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <a
+                          href={v.video_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-primary hover:underline font-medium"
+                        >
+                          <Download className="w-3 h-3" />
+                          Descargar
+                        </a>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
