@@ -161,6 +161,36 @@ export async function updateVideoStatus(
   if (error) throw error
 }
 
+export async function updateVideo(
+  id: string,
+  input: Partial<{
+    character_id: string | null
+    scenario_id: string | null
+    title: string
+    topic_category: string
+    spoken_script: string
+    script_tone: string
+    accessories_override: string[]
+    animation_effects: string[]
+    camera_movements: string[]
+    prompt_frame1: string
+    prompt_frame2: string
+    prompt_veo3: string
+    status: string
+    n8n_execution_id: string
+  }>
+): Promise<Video> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('videos')
+    .update(input)
+    .eq('id', id)
+    .select('*, character:cat_characters(*, breed:cat_breeds(*)), scenario:scenarios(*)')
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function deleteVideo(id: string): Promise<void> {
   const supabase = createClient()
   const { error } = await supabase.from('videos').delete().eq('id', id)

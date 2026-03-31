@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getCatCharacters, getScenarios, createVideo, updateVideoStatus, getN8nConfig } from '@/lib/supabase/queries'
+import { getCatCharacters, getScenarios, createVideo, updateVideo, updateVideoStatus, getN8nConfig, getVideo } from '@/lib/supabase/queries'
 import { buildPrompts } from '@/lib/prompt-builder'
 import type {
   CatCharacter,
@@ -54,7 +54,7 @@ const EMPTY_FORM: StudioFormState = {
   camera_movements: ['gentle_zoom_in'],
 }
 
-export function StudioForm() {
+export function StudioForm({ resumeVideoId }: { resumeVideoId?: string }) {
   const [step, setStep] = useState(1)
   const [form, setForm] = useState<StudioFormState>(EMPTY_FORM)
   const [characters, setCharacters] = useState<CatCharacter[]>([])
@@ -63,6 +63,7 @@ export function StudioForm() {
   const [generating, setGenerating] = useState(false)
   const [accessoryInput, setAccessoryInput] = useState('')
   const [copied, setCopied] = useState<'frame1' | 'frame2' | 'veo3' | null>(null)
+  const [resumedVideoId, setResumedVideoId] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([getCatCharacters(), getScenarios()])
@@ -73,6 +74,26 @@ export function StudioForm() {
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    if (!resumeVideoId || loading) return
+    getVideo(resumeVideoId).then((video) => {
+      if (!video) return
+      setForm({
+        character_id: video.character_id ?? '',
+        scenario_id: video.scenario_id ?? '',
+        title: video.title,
+        topic_category: video.topic_category,
+        spoken_script: video.spoken_script,
+        script_tone: video.script_tone,
+        accessories_override: video.accessories_override ?? [],
+        animation_effects: video.animation_effects ?? [],
+        camera_movements: video.camera_movements ?? [],
+      })
+      setResumedVideoId(video.id)
+      setStep(5)
+    }).catch(console.error)
+  }, [resumeVideoId, loading])
 
   const selectedCharacter = characters.find((c) => c.id === form.character_id) ?? null
   const selectedScenario = scenarios.find((s) => s.id === form.scenario_id) ?? null
@@ -129,7 +150,23 @@ export function StudioForm() {
 
     setGenerating(true)
     try {
-      const video = await createVideo(form, prompts)
+      const video = resumedVideoId
+        ? await updateVideo(resumedVideoId, {
+            character_id: form.character_id || null,
+            scenario_id: form.scenario_id || null,
+            title: form.title,
+            topic_category: form.topic_category,
+            spoken_script: form.spoken_script,
+            script_tone: form.script_tone,
+            accessories_override: form.accessories_override,
+            animation_effects: form.animation_effects,
+            camera_movements: form.camera_movements,
+            prompt_frame1: prompts.frame1,
+            prompt_frame2: prompts.frame2,
+            prompt_veo3: prompts.veo3,
+            status: 'draft',
+          })
+        : await createVideo(form, prompts)
 
       const payload = {
         video_id: video.id,
@@ -174,6 +211,7 @@ export function StudioForm() {
 
       toast.success('¡Enviado a n8n! El video se está generando.')
       setForm(EMPTY_FORM)
+      setResumedVideoId(null)
       setStep(1)
     } catch (err) {
       toast.error(String(err))

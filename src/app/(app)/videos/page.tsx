@@ -5,10 +5,10 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { getVideos, deleteVideo } from '@/lib/supabase/queries'
+import { getVideos, deleteVideo, updateVideoStatus, getN8nConfig } from '@/lib/supabase/queries'
 import type { Video, VideoStatus } from '@/types'
 import { TOPIC_CATEGORY_LABELS, SCRIPT_TONE_LABELS } from '@/types'
-import { Loader2, Trash2, Eye, Film, ExternalLink } from 'lucide-react'
+import { Loader2, Trash2, Eye, Film, ExternalLink, RotateCcw, PenLine } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
@@ -32,6 +32,7 @@ export default function VideosPage() {
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<VideoStatus | 'all'>('all')
   const [selected, setSelected] = useState<Video | null>(null)
+  const [regenerating, setRegenerating] = useState<string | null>(null)
 
   async function load() {
     const data = await getVideos(100)
@@ -50,6 +51,62 @@ export default function VideosPage() {
       toast.success('Video eliminado')
     } catch {
       toast.error('Error al eliminar')
+    }
+  }
+
+  async function handleRegenerate(video: Video) {
+    if (!video.prompt_veo3) {
+      toast.error('Este video no tiene prompts guardados — usa "Retomar" para regenerarlos')
+      return
+    }
+    setRegenerating(video.id)
+    try {
+      const n8nConfig = await getN8nConfig()
+      if (!n8nConfig?.instance_url) {
+        toast.error('n8n no configurado. Ve a Configuración.')
+        return
+      }
+      const webhookUrl = `${n8nConfig.instance_url.replace(/\/$/, '')}/webhook/kats-talks-veo3`
+
+      const payload = {
+        video_id: video.id,
+        personaje: video.character?.name ?? '',
+        raza: video.character?.breed?.name ?? '',
+        descripcion_gato: video.character?.prompt_description ?? '',
+        escenario: video.scenario?.name ?? '',
+        descripcion_escenario: video.scenario?.visual_prompt ?? '',
+        guion_hablado: video.spoken_script,
+        tono: SCRIPT_TONE_LABELS[video.script_tone],
+        efectos_animacion: video.animation_effects.join(', '),
+        movimientos_camara: video.camera_movements.join(', '),
+        prompt_frame1: video.prompt_frame1 ?? '',
+        prompt_frame2: video.prompt_frame2 ?? '',
+        prompt_veo3: video.prompt_veo3 ?? '',
+        titulo: video.title,
+      }
+
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const text = await res.text().catch(() => '')
+        throw new Error(`n8n respondió ${res.status}: ${text.slice(0, 200)}`)
+      }
+
+      const result = await res.json().catch(() => ({}))
+      const executionId = result.executionId ?? result.id ?? undefined
+
+      await updateVideoStatus(video.id, 'generating', { n8n_execution_id: executionId })
+      await load()
+      setSelected(null)
+      toast.success('¡Re-enviado a n8n! Generando de nuevo…')
+    } catch (err) {
+      toast.error(String(err))
+    } finally {
+      setRegenerating(null)
     }
   }
 
@@ -111,6 +168,7 @@ export default function VideosPage() {
         <div className="grid gap-3">
           {filtered.map((video) => {
             const badge = STATUS_CONFIG[video.status]
+            const isRegenerating = regenerating === video.id
             return (
               <Card key={video.id} className="hover:shadow-sm transition-shadow">
                 <CardContent className="py-3 px-4 flex items-center gap-4">
@@ -130,9 +188,9 @@ export default function VideosPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <Badge variant={badge.variant}>{badge.label}</Badge>
-                    <p className="text-xs text-muted-foreground hidden sm:block">
+                    <p className="text-xs text-muted-foreground hidden sm:block ml-1">
                       {new Date(video.created_at).toLocaleDateString('es', {
                         month: 'short',
                         day: 'numeric',
@@ -143,16 +201,38 @@ export default function VideosPage() {
                         href={video.video_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-muted-foreground hover:text-foreground ml-1"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     )}
+                    {/* Retomar: edit in studio */}
+                    <Link
+                      href={`/studio?resume=${video.id}`}
+                      className={buttonVariants({ variant: 'ghost', size: 'sm' }) + ' h-7 w-7 p-0'}
+                      title="Retomar en Studio"
+                    >
+                      <PenLine className="w-3.5 h-3.5" />
+                    </Link>
+                    {/* Regenerar: re-send to n8n directly */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={() => handleRegenerate(video)}
+                      disabled={isRegenerating}
+                      title="Regenerar con Veo3"
+                    >
+                      {isRegenerating
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <RotateCcw className="w-3.5 h-3.5" />}
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 w-7 p-0"
                       onClick={() => setSelected(video)}
+                      title="Ver detalles"
                     >
                       <Eye className="w-3.5 h-3.5" />
                     </Button>
@@ -161,6 +241,7 @@ export default function VideosPage() {
                       size="sm"
                       className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                       onClick={() => handleDelete(video.id, video.title)}
+                      title="Eliminar"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -244,6 +325,30 @@ export default function VideosPage() {
                   Ejecución n8n: {selected.n8n_execution_id}
                 </p>
               )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2 border-t">
+                <Link
+                  href={`/studio?resume=${selected.id}`}
+                  className={buttonVariants({ variant: 'outline', size: 'sm' }) + ' gap-1.5'}
+                  onClick={() => setSelected(null)}
+                >
+                  <PenLine className="w-3.5 h-3.5" />
+                  Retomar en Studio
+                </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => handleRegenerate(selected)}
+                  disabled={regenerating === selected.id}
+                >
+                  {regenerating === selected.id
+                    ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    : <RotateCcw className="w-3.5 h-3.5" />}
+                  Regenerar
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
