@@ -1,17 +1,18 @@
-import { NextResponse } from 'next/server'
-import { getN8nConfigServer } from '@/lib/supabase/queries-server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const config = await getN8nConfigServer()
+    const { searchParams } = req.nextUrl
+    const instance_url = searchParams.get('instance_url')
+    const api_key = searchParams.get('api_key')
 
-    if (!config?.instance_url || !config?.api_key) {
+    if (!instance_url || !api_key) {
       return NextResponse.json({ error: 'n8n not configured' }, { status: 400 })
     }
 
-    const url = `${config.instance_url.replace(/\/$/, '')}/api/v1/workflows?limit=50`
+    const url = `${instance_url.replace(/\/$/, '')}/api/v1/workflows?limit=50`
     const res = await fetch(url, {
-      headers: { 'X-N8N-API-KEY': config.api_key },
+      headers: { 'X-N8N-API-KEY': api_key },
     })
 
     const data = await res.json().catch(() => ({}))
