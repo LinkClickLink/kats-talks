@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getN8nConfigServer } from '@/lib/supabase/queries-server'
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const config = await getN8nConfigServer()
 
-    if (!config?.instance_url || !config?.api_key) {
+    // Client passes webhookUrl directly (reads n8n config from Supabase client-side)
+    const webhookUrl: string | undefined = body._webhookUrl
+    if (!webhookUrl) {
       return NextResponse.json({ error: 'n8n not configured' }, { status: 400 })
     }
-
-    if (!config.workflow_kats_veo3_id) {
-      return NextResponse.json({ error: 'Workflow ID not configured' }, { status: 400 })
-    }
-
-    const webhookUrl = `${config.instance_url.replace(/\/$/, '')}/webhook/kats-talks-veo3`
+    delete body._webhookUrl
 
     let res: Response
     try {

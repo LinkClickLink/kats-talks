@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { getCatCharacters, getScenarios, createVideo, updateVideoStatus } from '@/lib/supabase/queries'
+import { getCatCharacters, getScenarios, createVideo, updateVideoStatus, getN8nConfig } from '@/lib/supabase/queries'
 import { buildPrompts } from '@/lib/prompt-builder'
 import type {
   CatCharacter,
@@ -148,10 +148,16 @@ export function StudioForm() {
         titulo: form.title,
       }
 
+      const n8nConfig = await getN8nConfig()
+      if (!n8nConfig?.instance_url) {
+        throw new Error('n8n no configurado. Ve a Configuración y guarda la URL de n8n.')
+      }
+      const webhookUrl = `${n8nConfig.instance_url.replace(/\/$/, '')}/webhook/kats-talks-veo3`
+
       const res = await fetch('/api/n8n/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, _webhookUrl: webhookUrl }),
       })
 
       if (!res.ok) {
