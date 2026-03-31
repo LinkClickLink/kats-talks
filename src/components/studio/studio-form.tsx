@@ -154,18 +154,18 @@ export function StudioForm() {
       }
       const webhookUrl = `${n8nConfig.instance_url.replace(/\/$/, '')}/webhook/kats-talks-veo3`
 
-      const res = await fetch('/api/n8n/execute', {
+      const res = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload, _webhookUrl: webhookUrl }),
+        body: JSON.stringify(payload),
       })
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error ?? 'Error al ejecutar el workflow')
+        const text = await res.text().catch(() => '')
+        throw new Error(`n8n respondió ${res.status}: ${text.slice(0, 200)}`)
       }
 
-      const result = await res.json()
+      const result = await res.json().catch(() => ({}))
       const executionId = result.executionId ?? result.id ?? null
 
       await updateVideoStatus(video.id, 'generating', {
