@@ -65,11 +65,10 @@ export default function SettingsPage() {
     setTesting(true)
     setConnectionStatus('idle')
     try {
-      const params = new URLSearchParams({
-        instance_url: form.instance_url,
-        api_key: form.api_key,
+      const url = `${form.instance_url.replace(/\/$/, '')}/api/v1/workflows?limit=50`
+      const res = await fetch(url, {
+        headers: { 'X-N8N-API-KEY': form.api_key },
       })
-      const res = await fetch(`/api/n8n/workflows?${params}`)
       const data = await res.json()
       if (res.ok && data.data) {
         setConnectionStatus('ok')
